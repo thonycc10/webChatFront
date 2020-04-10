@@ -15,7 +15,10 @@ export class ChatComponent implements OnInit {
   mensaje: Mensaje = new Mensaje();
   mensajes: Mensaje[] = [];
   escribiendo: string;
-  constructor() { }
+  clienteId: string;
+  constructor() {
+    this.clienteId = 'id-' + new Date().getUTCMilliseconds() + '-' + Math.random().toString(36).substr(2);
+  }
 
   ngOnInit() {
     this.client = new Client();
@@ -42,6 +45,16 @@ export class ChatComponent implements OnInit {
         setTimeout(() => this.escribiendo = '', 3000); // position tiempo limte para mostrar
       });
 
+      this.client.subscribe('/chat/historial/' + this.clienteId, e => {
+        const historial = JSON.parse(e.body) as Mensaje[];
+        this.mensajes = historial.map(m => {
+          m.fecha = new Date(m.fecha);
+          return m;
+        }).reverse(); // mostrar los ultimos mensajes
+      });
+
+      this.client.publish({destination: '/app/historial', body: this.clienteId});
+
       this.mensaje.tipo = 'NUEVO_USUARIO';
       this.client.publish({destination: '/app/mensaje', body: JSON.stringify(this.mensaje)});
     };
@@ -49,6 +62,8 @@ export class ChatComponent implements OnInit {
     this.client.onDisconnect = (frames) => {
       console.log('Desconectados: ' + !this.client.connected + ' : ' + frames);
       this.conectado = false;
+      this.mensajes = [];
+      this.mensaje = new Mensaje();
     }
   }
 
