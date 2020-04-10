@@ -14,6 +14,7 @@ export class ChatComponent implements OnInit {
   conectado: boolean = false;
   mensaje: Mensaje = new Mensaje();
   mensajes: Mensaje[] = [];
+  escribiendo: string;
   constructor() { }
 
   ngOnInit() {
@@ -29,9 +30,20 @@ export class ChatComponent implements OnInit {
       this.client.subscribe('/chat/mensaje', e => {
         const mensaje: Mensaje = JSON.parse(e.body) as Mensaje;
         mensaje.fecha = new Date(mensaje.fecha);
+        if (!this.mensaje.color && mensaje.tipo == 'NUEVO_USUARIO' && this.mensaje.username == this.mensaje.username) {
+            this.mensaje.color = mensaje.color;
+        }
         this.mensajes.push(mensaje);
         console.log(mensaje);
       });
+
+      this.client.subscribe('/chat/escribiendo', e => {
+        this.escribiendo = e.body;
+        setTimeout(() => this.escribiendo = '', 3000); // position tiempo limte para mostrar
+      });
+
+      this.mensaje.tipo = 'NUEVO_USUARIO';
+      this.client.publish({destination: '/app/mensaje', body: JSON.stringify(this.mensaje)});
     };
     // para conectadornos
     this.client.onDisconnect = (frames) => {
@@ -50,8 +62,12 @@ export class ChatComponent implements OnInit {
   }
 
   enviarMensaje(): void {
+    this.mensaje.tipo = 'MENSAJE';
     this.client.publish({destination: '/app/mensaje', body: JSON.stringify(this.mensaje)});
     this.mensaje.texto = '';
   }
 
+  escribiendoUpdate(): void {
+    this.client.publish({ destination: '/app/escribiendo', body: this.mensaje.username});
+  }
 }
